@@ -1,0 +1,16 @@
+{application, bobc,
+ [{description, "A Cowboy OTP application"},
+  {vsn, "0.1.0"},
+  {registered, []},
+  {mod, {bobc_app, []}},
+  {applications,
+   [kernel,
+    stdlib,
+    cowboy
+   ]},
+  {env,[]},
+  {modules, []},
+
+  {licenses, ["Apache 2.0"]},
+  {links, []}
+ ]}.
