@@ -10,6 +10,8 @@
 -author("User").
 
 -behaviour(gen_server).
+-include_lib("stdlib/include/qlc.hrl").
+
 
 %% API
 -export([
@@ -27,16 +29,16 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {websocket, port, user, chat_id}).
 -record(message, {msg_id, msg, from, time}).
 
+-record(state, {websocket, external, remote}).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
 
 send(Msg)->
-  gen_server:cast( ?SERVER, {send, Msg }).
+  gen_server:cast(?SERVER, {send, Msg}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -45,8 +47,8 @@ send(Msg)->
 %% @end
 %%--------------------------------------------------------------------
 
-start_link(Port, User) ->
-  gen_server:start_link({local, ?SERVER}, ?MODULE, [Port, User], []).
+start_link(External, Remote) ->
+  gen_server:start_link({local, ?SERVER}, ?MODULE, [External, Remote], []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -66,9 +68,9 @@ start_link(Port, User) ->
 -spec(init(Args :: term()) ->
   {ok, State :: #state{}} | {ok, State :: #state{}, timeout() | hibernate} |
   {stop, Reason :: term()} | ignore).
-init([Port, User]) ->
-  listen_new_msg(Port),
-  {ok, #state{port = Port, user = User}}.
+init([External, Remote]) ->
+  listen_new_msg(External),
+  {ok, #state{external = External, remote = Remote}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -85,8 +87,15 @@ init([Port, User]) ->
   {noreply, NewState :: #state{}, timeout() | hibernate} |
   {stop, Reason :: term(), Reply :: term(), NewState :: #state{}} |
   {stop, Reason :: term(), NewState :: #state{}}).
+
+handle_call({websocket_init,  {WebSocket, ChatId}}, _From, #state{external = External, remote = Remote}) ->
+  NewState =  #state{websocket = WebSocket, external = External, remote = Remote},
+  Msgs = print_history(ChatId),
+  {reply,{ok, Msgs}, NewState};
+
 handle_call(_Request, _From, State) ->
   {reply, ok, State}.
+
 
 %%--------------------------------------------------------------------
 %% @private
@@ -100,10 +109,6 @@ handle_call(_Request, _From, State) ->
   {noreply, NewState :: #state{}, timeout() | hibernate} |
   {stop, Reason :: term(), NewState :: #state{}}).
 
-handle_call({websocket_init, {WebSocket, ChatId}, #state{port = Port, user = User}}) ->
-  NewState =  #state{websocket = WebSocket, port = Port, user = User},
-  Msgs = print_history(ChatId),
-  {reply,{ok, Msgs}, NewState}.
 
 handle_cast({send, Msg}, #state{websocket = WebSocket} = State)->
   WebSocket ! {send,Msg},
@@ -113,7 +118,7 @@ handle_cast({send, Msg}, #state{websocket = WebSocket} = State)->
 %%That function take the msg from front and save it in DB. After that it should to send msg to all users
 handle_cast({forward, Msg}, State) ->
 
-  forward(Msg, State#state.user),
+  forward(Msg, State#state.remote),
   {noreply, State}.
 
 
@@ -169,20 +174,28 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
 print_history(ChatId)->
   mnesia:start(),
   mnesia:wait_for_tables([list_to_atom(ChatId)], 20000),
   do(qlc:q([{X#message.msg_id, X#message.from,X#message.msg, X#message.time } || X <- mnesia:table(list_to_atom(ChatId))])).
 
-forward(Msg, Port)->
-  {ok, Socket} = gen_tcp:connect({127,0,0,1}, Port, [binary, {active, false}]),
+do(Q) ->
+  F = fun() -> qlc:e(Q) end,
+  {atomic, Val} = mnesia:transaction(F),
+  Val.
+
+forward(Msg, Remote)->
+  {ok, Socket} = gen_tcp:connect({127,0,0,1}, Remote, [binary, {active, false}]),
   gen_tcp:send(Socket, Msg).
-listen_new_msg(Port)->
-  Pid = spawn_link(fun() ->
-    {ok, LSocket} = gen_tcp:listen(Port, [binary, {active, false}]),
-    spawn(fun() -> acceptor(LSocket) end),
-    timer:sleep(infinity)
-                   end),
+
+listen_new_msg(Remote)->
+  Pid = spawn_link(
+    fun() ->
+      {ok, LSocket} = gen_tcp:listen(Remote, [binary, {active, false}]),
+      spawn(fun() -> acceptor(LSocket) end),
+      timer:sleep(infinity)
+    end),
   {ok, Pid}.
 
 acceptor(LSocket)->

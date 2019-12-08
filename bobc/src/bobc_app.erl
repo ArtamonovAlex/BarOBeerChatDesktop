@@ -13,10 +13,10 @@
 -define(ChatId, 123).
 
 start(_StartType, _StartArgs) ->
-    {ok, Port} = application:get_env(bobc, port),
-    {ok, User} = application:get_env(bobc, user),
-    {ok, Back} = application:get_env(bobc, back),
-    {ok,Pid_server} = local_back:start_link(Back, User),
+    {ok, Internal} = application:get_env(bobc, internal),
+    {ok, Remote} = application:get_env(bobc, remote),
+    {ok, External} = application:get_env(bobc, external),
+    {ok, Pid_server} = local_back:start_link(External, Remote),
     State = #state{pid_server = Pid_server},
     init_database(?ChatId),
     Dispatch = cowboy_router:compile([
@@ -26,7 +26,7 @@ start(_StartType, _StartArgs) ->
             ]}
         ]),
     {ok, _} = cowboy:start_clear(my_http_listener,
-        [{port, Port}],
+        [{port, Internal}],
         #{env => #{dispatch => Dispatch}}
         ),    
 
