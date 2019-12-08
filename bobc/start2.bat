@@ -1,1 +1,0 @@
-erl -sname Alex -bobc port 8081 -bobc back 8091 -bobc user 1488 -pa "D:\BarOBeerChatDesktop\bobc\_build\default\lib\bobc\ebin" -pa "D:\BarOBeerChatDesktop\bobc\_build\default\lib\cowboy\ebin" -pa "D:\BarOBeerChatDesktop\bobc\_build\default\lib\cowlib\ebin" -pa "D:\BarOBeerChatDesktop\bobc\_build\default\lib\ranch\ebin" -s test main
