@@ -3,14 +3,17 @@
 -behavior(cowboy_websocket).
 
 -export([init/2, websocket_handle/2, websocket_info/2, websocket_init/1]).
+-record(state, {pid_server}).
+
 
 
 init(Req, State) ->
   {cowboy_websocket, Req, State}.
 
 websocket_init(State) ->
-  register(websocket, self()),
-  {[{text, <<"Hello!">>}], State}.
+	PidServer = State#state.pid_server,
+  	gen_server:cast(PidServer, {websocket, self()}),
+  	{[{text, <<"Hello!">>}], State}.
 
 websocket_handle({text, Msg}, State) ->
   io:format("Got: ~p~n", [Msg]),

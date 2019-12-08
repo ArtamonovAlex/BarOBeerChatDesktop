@@ -8,16 +8,20 @@
 -behaviour(application).
 
 -export([start/2, stop/1]).
+-record(state, {pid_server}).
 
 start(_StartType, _StartArgs) ->
+    {ok,Pid_server} = local_back:start_link(),
+    {ok, Port} = application:get_env(bobc, port),
+    State = #state{pid_server = Pid_server},
     Dispatch = cowboy_router:compile([
             {'_', [
                 {"/", bobc_handler, []},
-                {"/websocket", websocket_handler, []}
+                {"/websocket", websocket_handler, State}
             ]}
         ]),
     {ok, _} = cowboy:start_clear(my_http_listener,
-        [{port, 8080}],
+        [{port, Port}],
         #{env => #{dispatch => Dispatch}}
         ),    
 
