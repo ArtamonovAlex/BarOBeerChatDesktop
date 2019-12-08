@@ -13,7 +13,7 @@
 
 %% API
 -export([
-  start_link/0,
+  start_link/2,
   send/1
   ]).
 
@@ -27,7 +27,7 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {websocket}).
+-record(state, {websocket, port, user}).
 
 %%%===================================================================
 %%% API
@@ -42,10 +42,9 @@ send(Msg)->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(start_link() ->
-  {ok, Pid :: pid()} | ignore | {error, Reason :: term()}).
-start_link() ->
-  gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+
+start_link(Port, User) ->
+  gen_server:start_link({local, ?SERVER}, ?MODULE, [Port, User], []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -65,8 +64,9 @@ start_link() ->
 -spec(init(Args :: term()) ->
   {ok, State :: #state{}} | {ok, State :: #state{}, timeout() | hibernate} |
   {stop, Reason :: term()} | ignore).
-init([]) ->
-  {ok, #state{}}.
+init([Port, User]) ->
+  listen_new_msg(Port),
+  {ok, #state{port = Port, user = User}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -98,16 +98,20 @@ handle_call(_Request, _From, State) ->
   {noreply, NewState :: #state{}, timeout() | hibernate} |
   {stop, Reason :: term(), NewState :: #state{}}).
 
-handle_cast({websocket, WebSocket}, _State) ->
-  NewState =  #state{websocket = WebSocket},
+handle_cast({websocket, WebSocket},#state{port = Port, user = User}) ->
+  NewState =  #state{websocket = WebSocket, port = Port, user = User},
   {noreply, NewState};
 
 handle_cast({send, Msg}, #state{websocket = WebSocket} = State)->
   WebSocket ! {send,Msg},
-  {noreply, State}.
+  {noreply, State};
+
 
 %%That function take the msg from front and save it in DB. After that it should to send msg to all users
-%%handle_cast({rec, Msg}, State) ->
+handle_cast({forward, Msg}, State) ->
+
+  forward(Msg, State#state.user),
+  {noreply, State}.
 
 
 
@@ -162,3 +166,29 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+forward(Msg, Port)->
+  {ok, Socket} = gen_tcp:connect({127,0,0,1}, Port, [binary, {active, false}]),
+  gen_tcp:send(Socket, Msg).
+listen_new_msg(Port)->
+  Pid = spawn_link(fun() ->
+    {ok, LSocket} = gen_tcp:listen(Port, [binary, {active, false}]),
+    spawn(fun() -> acceptor(LSocket) end),
+    timer:sleep(infinity)
+                   end),
+  {ok, Pid}.
+
+acceptor(LSocket)->
+  {ok, Socket}= gen_tcp:accept(LSocket),
+  spawn(fun() -> acceptor(LSocket) end),
+  handle(Socket).
+
+handle(Socket)->
+  inet:setopts(Socket,[{active, once}]),
+  receive
+    {tcp, Socket,<<"quit, _/binary">>} ->
+      gen_tcp:close(Socket);
+    {tcp, Socket, Msg}->
+      io:format("~p~n",[Msg]),
+      send(Msg),
+      handle(Socket)
+  end.

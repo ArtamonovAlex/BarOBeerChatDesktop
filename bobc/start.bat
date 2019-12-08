@@ -1,1 +1,0 @@
-erl -sname Paul -bobc port 8080 -pa "D:\BarOBeerChatDesktop\bobc\_build\default\lib\bobc\ebin" -pa "D:\BarOBeerChatDesktop\bobc\_build\default\lib\cowboy\ebin" -pa "D:\BarOBeerChatDesktop\bobc\_build\default\lib\cowlib\ebin" -pa "D:\BarOBeerChatDesktop\bobc\_build\default\lib\ranch\ebin" -s test main
