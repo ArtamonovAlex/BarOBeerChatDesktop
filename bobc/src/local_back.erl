@@ -27,7 +27,9 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {websocket, port, user}).
+-record(state, {websocket, port, user, chat_id}).
+-record(message, {msg_id, msg, from, time}).
+
 
 %%%===================================================================
 %%% API
@@ -98,9 +100,10 @@ handle_call(_Request, _From, State) ->
   {noreply, NewState :: #state{}, timeout() | hibernate} |
   {stop, Reason :: term(), NewState :: #state{}}).
 
-handle_cast({websocket, WebSocket},#state{port = Port, user = User}) ->
+handle_call({websocket_init, {WebSocket, ChatId}, #state{port = Port, user = User}}) ->
   NewState =  #state{websocket = WebSocket, port = Port, user = User},
-  {noreply, NewState};
+  Msgs = print_history(ChatId),
+  {reply,{ok, Msgs}, NewState}.
 
 handle_cast({send, Msg}, #state{websocket = WebSocket} = State)->
   WebSocket ! {send,Msg},
@@ -166,6 +169,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+print_history(ChatId)->
+  mnesia:start(),
+  mnesia:wait_for_tables([list_to_atom(ChatId)], 20000),
+  do(qlc:q([{X#message.msg_id, X#message.from,X#message.msg, X#message.time } || X <- mnesia:table(list_to_atom(ChatId))])).
+
 forward(Msg, Port)->
   {ok, Socket} = gen_tcp:connect({127,0,0,1}, Port, [binary, {active, false}]),
   gen_tcp:send(Socket, Msg).
