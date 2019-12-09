@@ -22,46 +22,14 @@ namespace BOBCClient
     /// </summary>
     public partial class MainWindow : Window
     {
-        private ObservableCollection<string> messages;
-
-        private WebSocket ws;
-
         public MainWindow()
         {
             InitializeComponent();
-
-
-            messages = new ObservableCollection<string> {};
-
-            MessageBox.ItemsSource = messages;
-
-            ws = new WebSocket("ws://localhost:8080/websocket");
-            ws.OnMessage += Ws_OnMessage;
-            ws.OnClose += Ws_OnClose;
-            ws.Connect();
-
+            OpenPage(new LoginPage(this));
         }
 
-        private void Ws_OnClose(object sender, CloseEventArgs e)
-        {
-            ws = new WebSocket("ws://localhost:8080/websocket");
-            ws.Connect();
-        }
-
-        private void Ws_OnMessage(object sender, MessageEventArgs e)
-        {
-            App.Current.Dispatcher.Invoke((Action)delegate
-            {
-                messages.Add(e.Data);
-            });
-        }
-
-        private void SendButton_Click(object sender, RoutedEventArgs e)
-        {
-            string newMessage = InputBox.Text;
-            InputBox.Clear();
-            ws.Send(newMessage);
-            messages.Add(newMessage);
+        public void OpenPage(Page page) {
+            Frame.Navigate(page);
         }
     }
 }
