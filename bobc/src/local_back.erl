@@ -114,7 +114,7 @@ handle_call(_Request, _From, State) ->
 
 handle_cast({send, #message{ msg = Message, from = From} = Msg}, #state{websocket = WebSocket, chat_id = Chat_id} = State)->
   save_message(Chat_id,{From,Message}),
-  WebSocket ! {send,Msg},
+  WebSocket ! {send,{Msg#message.msg_id, Msg#message.msg, Msg#message.from, Msg#message.time }},
   {noreply, State};
 
 
@@ -181,7 +181,7 @@ code_change(_OldVsn, State, _Extra) ->
 print_history(ChatId)->
   mnesia:start(),
   mnesia:wait_for_tables([list_to_atom(ChatId)], 20000),
-  do(qlc:q([{X#message.msg_id, X#message.from,X#message.msg, X#message.time } || X <- mnesia:table(list_to_atom(ChatId))])).
+  do(qlc:q([{ X#message.msg_id,X#message.msg, X#message.from, X#message.time } || X <- mnesia:table(list_to_atom(ChatId))])).
 
 do(Q) ->
   F = fun() -> qlc:e(Q) end,
