@@ -10,15 +10,15 @@
 -export([start/2, stop/1]).
 -record(state, {pid_server}).
 -record(message, {msg_id, msg, from, time}).
--define(ChatId, 123).
+-define(ChatId, "123").
 
 start(_StartType, _StartArgs) ->
     {ok, Internal} = application:get_env(bobc, internal),
     {ok, Remote} = application:get_env(bobc, remote),
     {ok, External} = application:get_env(bobc, external),
-    {ok, Pid_server} = local_back:start_link(External, Remote),
-    State = #state{pid_server = Pid_server},
     init_database(?ChatId),
+    {ok, Pid_server} = local_back:start_link(External, Remote, ?ChatId),
+    State = #state{pid_server = Pid_server},
     Dispatch = cowboy_router:compile([
             {'_', [
                 {"/", bobc_handler, []},
@@ -51,7 +51,7 @@ init_database(ChatId) ->
     of
         {aborted, {already_exists, _}} -> ok;
         {atomic, ok} ->
-            Row = #message{from = system, msg  = "Welcome to chat " ++ ChatId, msg_id = 0, time = calendar:local_time()},
+            Row = #message{from = system, msg  = list_to_binary("Welcome to chat " ++ ChatId), msg_id = 0, time = calendar:local_time()},
             F = fun() -> mnesia:write(list_to_atom(ChatId),Row, write) end,
             mnesia:transaction(F),
             ok

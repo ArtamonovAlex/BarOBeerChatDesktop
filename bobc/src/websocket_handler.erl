@@ -3,7 +3,7 @@
 -behavior(cowboy_websocket).
 
 -export([init/2, websocket_handle/2, websocket_info/2, websocket_init/1]).
--record(state, {pid_server, char_id}).
+-record(state, {pid_server}).
 
 
 
@@ -12,9 +12,8 @@ init(Req, State) ->
 
 websocket_init(State) ->
 	PidServer = State#state.pid_server,
-  ChatId = State#state.
-  {ok, Msgs} = gen_server:call(PidServer, {websocket_init, {self(), ChatId}}),
-   Reply = [{text, list_to_binary(tuple_to_list(Msg))}|| Msg<- Msgs],
+  {ok, Msgs} = gen_server:call(PidServer, {websocket_init, self()}),
+   Reply = [{text, jsone:encode(tuple_to_list(Msg))}|| Msg<- Msgs],
   	{Reply, State}.
 
 websocket_handle({text, Msg}, State) ->
@@ -27,7 +26,8 @@ websocket_handle(_Data, State) ->
   {[], State}.
 
 websocket_info({send, Msg}, State) ->
-  {[{text, Msg}], State};
+  Reply = [{text, jsone:encode(tuple_to_list(Msg))}],
+  {Reply, State};
 
 websocket_info(_Info, State) ->
   {[], State}.
