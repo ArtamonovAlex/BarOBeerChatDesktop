@@ -1,4 +1,4 @@
-@echo off
+
 set LIB_PATH=%CD%\_build\default\lib
 set PROJECT_BEAMS=%LIB_PATH%\bobc\ebin
 set COWBOY_BEAMS=%LIB_PATH%\cowboy\ebin
