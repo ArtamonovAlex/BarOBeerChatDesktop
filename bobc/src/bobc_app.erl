@@ -15,6 +15,7 @@
 start(_StartType, _StartArgs) ->
     {ok, Internal} = application:get_env(bobc, internal),
     {ok, Remote} = application:get_env(bobc, remote),
+    % Users_list = jsone:decode(list_to_binary(Remote)),
     {ok, External} = application:get_env(bobc, external),
     init_database(?ChatId),
     {ok, Pid_server} = local_back:start_link(External, Remote, ?ChatId),
