@@ -10,10 +10,12 @@
 -author("User").
 
 -behaviour(gen_server).
+-include_lib("stdlib/include/qlc.hrl").
+
 
 %% API
 -export([
-  start_link/2,
+  start_link/3,
   send/1
   ]).
 
@@ -27,14 +29,18 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {websocket, external, remote}).
+-record(message, {msg_id, msg, from, time}).
+
+-record(state, {websocket, external, remote, chat_id}).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
 
 send(Msg)->
-  gen_server:cast(?SERVER, {send, Msg}).
+  Message = binary_to_term(Msg),
+  io:format("~p~n",[Message]),
+  gen_server:cast(?SERVER, {send, Message}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -43,8 +49,8 @@ send(Msg)->
 %% @end
 %%--------------------------------------------------------------------
 
-start_link(External, Remote) ->
-  gen_server:start_link({local, ?SERVER}, ?MODULE, [External, Remote], []).
+start_link(External, Remote, ChatId) ->
+  gen_server:start_link({local, ?SERVER}, ?MODULE, [External, Remote, ChatId], []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -64,9 +70,9 @@ start_link(External, Remote) ->
 -spec(init(Args :: term()) ->
   {ok, State :: #state{}} | {ok, State :: #state{}, timeout() | hibernate} |
   {stop, Reason :: term()} | ignore).
-init([External, Remote]) ->
+init([External, Remote, ChatId]) ->
   listen_new_msg(External),
-  {ok, #state{external = External, remote = Remote}}.
+  {ok, #state{external = External, remote = Remote, chat_id = ChatId}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -83,8 +89,15 @@ init([External, Remote]) ->
   {noreply, NewState :: #state{}, timeout() | hibernate} |
   {stop, Reason :: term(), Reply :: term(), NewState :: #state{}} |
   {stop, Reason :: term(), NewState :: #state{}}).
+
+handle_call({websocket_init,  WebSocket}, _From, #state{external = External, remote = Remote, chat_id =ChatId}) ->
+  NewState =  #state{websocket = WebSocket, external = External, remote = Remote, chat_id = ChatId},
+  Msgs = print_history(ChatId),
+  {reply,{ok, Msgs}, NewState};
+
 handle_call(_Request, _From, State) ->
   {reply, ok, State}.
+
 
 %%--------------------------------------------------------------------
 %% @private
@@ -98,19 +111,17 @@ handle_call(_Request, _From, State) ->
   {noreply, NewState :: #state{}, timeout() | hibernate} |
   {stop, Reason :: term(), NewState :: #state{}}).
 
-handle_cast({websocket, WebSocket},#state{external = External, remote = Remote}) ->
-  NewState =  #state{websocket = WebSocket, external = External, remote = Remote},
-  {noreply, NewState};
 
-handle_cast({send, Msg}, #state{websocket = WebSocket} = State)->
+handle_cast({send, #message{ msg = Message, from = From} = Msg}, #state{websocket = WebSocket, chat_id = Chat_id} = State)->
+  save_message(Chat_id,{From,Message}),
   WebSocket ! {send,Msg},
   {noreply, State};
 
 
 %%That function take the msg from front and save it in DB. After that it should to send msg to all users
 handle_cast({forward, Msg}, State) ->
-
-  forward(Msg, State#state.remote),
+  
+  forward(State#state.chat_id, Msg, State#state.remote),
   {noreply, State}.
 
 
@@ -166,9 +177,22 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-forward(Msg, Remote)->
+
+print_history(ChatId)->
+  mnesia:start(),
+  mnesia:wait_for_tables([list_to_atom(ChatId)], 20000),
+  do(qlc:q([{X#message.msg_id, X#message.from,X#message.msg, X#message.time } || X <- mnesia:table(list_to_atom(ChatId))])).
+
+do(Q) ->
+  F = fun() -> qlc:e(Q) end,
+  {atomic, Val} = mnesia:transaction(F),
+  Val.
+
+forward(Chat_id, Msg, Remote)->
+  {ok, [[From]] } = init:get_argument(sname),
+  Message = save_message(Chat_id,{list_to_atom(From), Msg}),
   {ok, Socket} = gen_tcp:connect({127,0,0,1}, Remote, [binary, {active, false}]),
-  gen_tcp:send(Socket, Msg).
+  gen_tcp:send(Socket, term_to_binary(Message)).
 
 listen_new_msg(Remote)->
   Pid = spawn_link(
@@ -190,7 +214,14 @@ handle(Socket)->
     {tcp, Socket,<<"quit, _/binary">>} ->
       gen_tcp:close(Socket);
     {tcp, Socket, Msg}->
-      io:format("~p~n",[Msg]),
       send(Msg),
       handle(Socket)
   end.
+
+  save_message(ChatId, {From, Message}) ->
+    Row = #message{from = From, msg = Message,
+      msg_id = mnesia:dirty_last(list_to_atom(ChatId)) + 1,
+      time= calendar:local_time()},
+    F = fun() -> mnesia:write(list_to_atom(ChatId),Row, write) end,
+    mnesia:transaction(F),
+    Row.
