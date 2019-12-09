@@ -37,12 +37,12 @@
                 <TextBlock Grid.Column="0" Grid.Row="1" Text="Websocket port:" VerticalAlignment="Center" Padding="10"/>
                 <TextBlock Grid.Column="0" Grid.Row="2" Text="Listener port:" VerticalAlignment="Center" Padding="10"/>
                 <TextBlock Grid.Column="0" Grid.Row="3" Text="Remote port:" VerticalAlignment="Center" Padding="10"/>
-                <TextBox Grid.Column="1" Grid.Row="0" VerticalAlignment="Center" Height="30" Margin="10" x:Name="NodeNameBox"/>
-                <TextBox Grid.Column="1" Grid.Row="1" VerticalAlignment="Center" Height="30" Margin="10" x:Name="InternalPortBox"/>
-                <TextBox Grid.Column="1" Grid.Row="2" VerticalAlignment="Center" Height="30" Margin="10" x:Name="ExternalPortBox"/>
-                <TextBox Grid.Column="1" Grid.Row="3" VerticalAlignment="Center" Height="30" Margin="10" x:Name="RemotePortBox"/>
+                <TextBox Grid.Column="1" Grid.Row="0" VerticalAlignment="Center" Height="30" Margin="10" x:Name="NodeNameBox" Text="Paul"/>
+                <TextBox Grid.Column="1" Grid.Row="1" VerticalAlignment="Center" Height="30" Margin="10" x:Name="InternalPortBox" Text="8080"/>
+                <TextBox Grid.Column="1" Grid.Row="2" VerticalAlignment="Center" Height="30" Margin="10" x:Name="ExternalPortBox" Text="8091"/>
+                <TextBox Grid.Column="1" Grid.Row="3" VerticalAlignment="Center" Height="30" Margin="10" x:Name="RemotePortBox" Text="[8092, 8093]"/>
                 <Button Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" Margin="15" Content="Start node" Click="StartButton_Click"/>
-                <CheckBox Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2" Content="Debug Mode (show terminal)" VerticalAlignment="Center" x:Name="DebugMode"/>
+                <CheckBox Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2" Content="Debug Mode (show terminal)" VerticalAlignment="Center" x:Name="DebugMode" IsChecked="True"/>
             </Grid>
         </Grid>
     </Grid>
