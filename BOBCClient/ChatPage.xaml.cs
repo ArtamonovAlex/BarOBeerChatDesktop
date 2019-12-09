@@ -24,8 +24,6 @@ namespace BOBCClient
     public partial class ChatPage : Page
     {
 
-        private const bool HideTerminal = true;
-
         private ObservableCollection<string> messages;
 
         public MainWindow mainWindow;
@@ -35,7 +33,7 @@ namespace BOBCClient
         private int internalPort;
 
         private Process erlNode;
-        public ChatPage(MainWindow _mainWindow, string nodeName, int _internalPort, int externalPort, int remotePort)
+        public ChatPage(MainWindow _mainWindow, string nodeName, int _internalPort, int externalPort, int remotePort, bool debugModeOn)
         {
             InitializeComponent();
 
@@ -48,7 +46,7 @@ namespace BOBCClient
             erlNode = new Process();
             erlNode.StartInfo.WorkingDirectory = string.Format(fullPath);
             erlNode.StartInfo.FileName = "cmd.exe";
-            erlNode.StartInfo.CreateNoWindow = HideTerminal;
+            erlNode.StartInfo.CreateNoWindow = !debugModeOn;
             erlNode.StartInfo.RedirectStandardInput = true;
             erlNode.StartInfo.UseShellExecute = false;
             erlNode.Start();

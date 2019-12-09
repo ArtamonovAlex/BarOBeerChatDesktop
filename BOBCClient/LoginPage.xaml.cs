@@ -36,7 +36,8 @@ namespace BOBCClient
             int.TryParse(InternalPortBox.Text, out int internalPort);
             int.TryParse(ExternalPortBox.Text, out int externalPort);
             int.TryParse(RemotePortBox.Text, out int remotePort);
-            mainWindow.OpenPage(new ChatPage(mainWindow, nodeName, internalPort, externalPort, remotePort));
+            bool debugMode = (bool)DebugMode.IsChecked;
+            mainWindow.OpenPage(new ChatPage(mainWindow, nodeName, internalPort, externalPort, remotePort, debugMode));
         }
     }
 }
