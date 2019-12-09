@@ -119,9 +119,10 @@ handle_cast({send, #message{ msg = Message, from = From} = Msg}, #state{websocke
 
 
 %%That function take the msg from front and save it in DB. After that it should to send msg to all users
-handle_cast({forward, Msg}, State) ->
-  
-  forward(State#state.chat_id, Msg, State#state.remote),
+handle_cast({forward, Msg},#state{chat_id = Chat_id, remote = Remote} = State) ->
+  {ok, [[From]] } = init:get_argument(sname),
+  Message = save_message(Chat_id,{list_to_atom(From), Msg}),
+  forward(Message, Remote),
   {noreply, State}.
 
 
@@ -188,11 +189,13 @@ do(Q) ->
   {atomic, Val} = mnesia:transaction(F),
   Val.
 
-forward(Chat_id, Msg, Remote)->
-  {ok, [[From]] } = init:get_argument(sname),
-  Message = save_message(Chat_id,{list_to_atom(From), Msg}),
+forward(Msg,[Remote|[]])->
+    {ok, Socket} = gen_tcp:connect({127,0,0,1}, Remote, [binary, {active, false}]),
+    gen_tcp:send(Socket, term_to_binary(Msg));
+forward(Msg, [Remote|Ports])->  
   {ok, Socket} = gen_tcp:connect({127,0,0,1}, Remote, [binary, {active, false}]),
-  gen_tcp:send(Socket, term_to_binary(Message)).
+  gen_tcp:send(Socket, term_to_binary(Msg)),
+  forward(Msg, Ports).
 
 listen_new_msg(Remote)->
   Pid = spawn_link(
