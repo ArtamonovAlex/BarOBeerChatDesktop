@@ -12,8 +12,9 @@ init(Req, State) ->
 
 websocket_init(State) ->
 	PidServer = State#state.pid_server,
-  	gen_server:cast(PidServer, {websocket, self()}),
-  	{[{text, <<"Hello!">>}], State}.
+  {ok, Msgs} = gen_server:call(PidServer, {websocket_init, self()}),
+   Reply = [{text, jsone:encode(tuple_to_list(Msg))}|| Msg<- Msgs],
+  	{Reply, State}.
 
 websocket_handle({text, Msg}, State) ->
   io:format("Got: ~p~n", [Msg]),
@@ -25,7 +26,8 @@ websocket_handle(_Data, State) ->
   {[], State}.
 
 websocket_info({send, Msg}, State) ->
-  {[{text, Msg}], State};
+  Reply = [{text, jsone:encode(tuple_to_list(Msg))}],
+  {Reply, State};
 
 websocket_info(_Info, State) ->
   {[], State}.
