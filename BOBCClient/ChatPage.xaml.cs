@@ -33,7 +33,7 @@ namespace BOBCClient
         private int internalPort;
 
         private Process erlNode;
-        public ChatPage(MainWindow _mainWindow, string nodeName, int _internalPort, int externalPort, int remotePort, bool debugModeOn)
+        public ChatPage(MainWindow _mainWindow, string nodeName, int _internalPort, int externalPort, string remotePort, bool debugModeOn)
         {
             InitializeComponent();
 
@@ -50,7 +50,7 @@ namespace BOBCClient
             erlNode.StartInfo.RedirectStandardInput = true;
             erlNode.StartInfo.UseShellExecute = false;
             erlNode.Start();
-            erlNode.StandardInput.WriteLine($"start.bat {nodeName} {_internalPort} {externalPort} {remotePort}");
+            erlNode.StandardInput.WriteLine($"start.bat {nodeName} {_internalPort} {externalPort} \"{remotePort}\"");
 
 
             mainWindow = _mainWindow;
