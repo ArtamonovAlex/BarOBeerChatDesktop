@@ -38,9 +38,8 @@
 %%%===================================================================
 
 send(Msg)->
-  Message = binary_to_term(Msg),
-  io:format("~p~n",[Message]),
-  gen_server:cast(?SERVER, {send, Message}).
+  io:format("~p~n",[Msg]),
+  gen_server:cast(?SERVER, {send, Msg}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -72,6 +71,7 @@ start_link(External, Remote, ChatId) ->
   {stop, Reason :: term()} | ignore).
 init([External, Remote, ChatId]) ->
   listen_new_msg(External),
+  forward({enter,External}, Remote),
   {ok, #state{external = External, remote = Remote, chat_id = ChatId}}.
 
 %%--------------------------------------------------------------------
@@ -123,7 +123,20 @@ handle_cast({forward, Msg},#state{chat_id = Chat_id, remote = Remote} = State) -
   {ok, [[From]] } = init:get_argument(sname),
   Message = save_message(Chat_id,{list_to_atom(From), Msg}),
   forward(Message, Remote),
-  {noreply, State}.
+  {noreply, State};
+
+handle_cast({enter, Client_port}, State)->
+  gen_server:cast(forward, list_to_binary("User connected " ++ integer_to_list(Client_port))),
+  NewState = #state{websocket =State#state.websocket, external = State#state.external, remote =[Client_port| State#state.remote], chat_id = State#state.chat_id},
+  {noreply, NewState};
+
+handle_cast({leave, Client_port}, State)->
+  gen_server:cast(forward, list_to_binary("User Leave " ++  integer_to_list(Client_port))),
+  Remote = lists:delete(Client_port),
+  NewState = #state{websocket =State#state.websocket, external = State#state.external, remote =Remote, chat_id = State#state.chat_id},
+  {noreply, NewState}.
+
+
 
 
 
@@ -158,7 +171,8 @@ handle_info(_Info, State) ->
 %%--------------------------------------------------------------------
 -spec(terminate(Reason :: (normal | shutdown | {shutdown, term()} | term()),
     State :: #state{}) -> term()).
-terminate(_Reason, _State) ->
+terminate(_Reason, State) ->
+  forward({leave, State#state.external}, State#state.remote),
   ok.
 
 %%--------------------------------------------------------------------
@@ -189,9 +203,8 @@ do(Q) ->
   {atomic, Val} = mnesia:transaction(F),
   Val.
 
-forward(Msg,[Remote|[]])->
-    {ok, Socket} = gen_tcp:connect({127,0,0,1}, Remote, [binary, {active, false}]),
-    gen_tcp:send(Socket, term_to_binary(Msg));
+forward(_Msg,[])->
+    ok;
 forward(Msg, [Remote|Ports])->  
   {ok, Socket} = gen_tcp:connect({127,0,0,1}, Remote, [binary, {active, false}]),
   gen_tcp:send(Socket, term_to_binary(Msg)),
@@ -212,14 +225,33 @@ acceptor(LSocket)->
   handle(Socket).
 
 handle(Socket)->
-  inet:setopts(Socket,[{active, once}]),
-  receive
-    {tcp, Socket,<<"quit, _/binary">>} ->
-      gen_tcp:close(Socket);
-    {tcp, Socket, Msg}->
-      send(Msg),
-      handle(Socket)
+  case gen_tcp:recv(Socket, 0) of
+    {ok, Msg} ->
+      Input = binary_to_term(Msg),
+      case Input of
+
+        {enter, Client_port} ->
+          gen_server:cast(?SERVER, {enter, Client_port});
+        {leave, Client_port} ->
+          gen_server:cast(?SERVER, {leave,Client_port});
+        Message ->
+          send(Message)
+      end,
+      handle(Socket);
+    {error, closed} ->
+      io:format("Connection closed~n"),
+      gen_tcp:close(Socket),
+      acceptor(Socket)
+
   end.
+  % inet:setopts(Socket,[{active, once}]),
+  % receive
+  %   {tcp, Socket,<<"quit, _/binary">>} ->
+  %     gen_tcp:close(Socket);
+  %   {tcp, Socket, Msg}->
+  %     send(Msg),
+  %     handle(Socket)
+  % end.
 
   save_message(ChatId, {From, Message}) ->
     Row = #message{from = From, msg = Message,
