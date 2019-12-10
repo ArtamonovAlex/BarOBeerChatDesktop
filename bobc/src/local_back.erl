@@ -168,7 +168,7 @@ forward(Msg, [Remote|Ports])->
       gen_tcp:send(RSocket, term_to_binary(Msg)),
       forward(Msg, Ports);
     {error, Reson} ->
-      gen_server:cast(?SERVER, {leave, Remote}),
+      %gen_server:cast(?SERVER, {leave, Remote}),
       io:format("~p~n",[Reson]),
       forward(Msg, Ports);
 
@@ -211,7 +211,7 @@ handle(Socket, Remote)->
         {enter, Client_port} ->
           gen_server:cast(?SERVER, {enter, Client_port});
         {leave, Client_port} ->
-          gen_server:cast(?SERVER, {leave,Client_port});
+          ok;%gen_server:cast(?SERVER, {leave,Client_port});
         Message ->
           send(Message)
       end,
