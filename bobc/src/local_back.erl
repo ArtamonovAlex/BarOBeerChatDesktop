@@ -109,13 +109,13 @@ handle_cast({forward, Msg},#state{chat_id = Chat_id, remote = Remote} = State) -
   {noreply, State};
 
 handle_cast({enter, Client_port}, State)->
-  State#state.websocket !{ send, #{msg_id => -1, msg =>list_to_binary("User connected " ++ integer_to_list(Client_port)), from => system, time => calendar:local_time()}},
+  State#state.websocket !{ send, #{msg_id => -1, msg =>list_to_binary("User  connected with port " ++ integer_to_list(Client_port)), from => system, time => calendar:local_time()}},
   NewState = #state{websocket =State#state.websocket, external = State#state.external, remote =[Client_port| State#state.remote], chat_id = State#state.chat_id},
   {noreply, NewState};
 
 handle_cast({leave, Client_port}, State)->
-  State#state.websocket !{ send,list_to_binary("User leave " ++ integer_to_list(Client_port))},
-  Remote = lists:delete(Client_port),
+  State#state.websocket !{ send, #{msg_id => -1, msg =>list_to_binary("Leave user with port " ++ integer_to_list(Client_port)), from => system, time => calendar:local_time()}},
+  Remote = lists:delete(Client_port, State#state.remote),
   NewState = #state{websocket =State#state.websocket, external = State#state.external, remote =Remote, chat_id = State#state.chat_id},
   {noreply, NewState}.
 
@@ -162,25 +162,47 @@ code_change(_OldVsn, State, _Extra) ->
 forward(_Msg,[])->
     ok;
 forward(Msg, [Remote|Ports])->  
-  {ok, Socket} = gen_tcp:connect({127,0,0,1}, Remote, [binary, {active, false}]),
-  gen_tcp:send(Socket, term_to_binary(Msg)),
-  forward(Msg, Ports).
+   Socket = gen_tcp:connect({127,0,0,1}, Remote, [binary, {active, false}]),
+  case Socket of
+    {ok, RSocket} ->
+      gen_tcp:send(RSocket, term_to_binary(Msg)),
+      forward(Msg, Ports);
+    {error, Reson} ->
+      gen_server:cast(?SERVER, {leave, Remote}),
+      io:format("~p~n",[Reson]),
+      forward(Msg, Ports);
+
+    Else ->
+      io:format("~p~n",[Else])
+
+  end.
+
+
+
 
 listen_new_msg(Remote)->
   Pid = spawn_link(
     fun() ->
       {ok, LSocket} = gen_tcp:listen(Remote, [binary, {active, false}]),
-      spawn(fun() -> acceptor(LSocket) end),
+      spawn(fun() -> acceptor(LSocket, Remote) end),
       timer:sleep(infinity)
     end),
   {ok, Pid}.
 
-acceptor(LSocket)->
-  {ok, Socket}= gen_tcp:accept(LSocket),
-  spawn(fun() -> acceptor(LSocket) end),
-  handle(Socket).
+acceptor(LSocket, Remote)->
+  Socket = gen_tcp:accept(LSocket),
+  case Socket of
+    {ok, RSocket} ->
+      spawn(fun() -> acceptor(LSocket, Remote) end),
+      handle(RSocket, Remote);
+%%    {error, closed} ->
+%%      gen_server:cast(?SERVER, {leave, Remote});
+    Else ->
+      io:format("~p~n",[Else])
 
-handle(Socket)->
+  end.
+
+handle(Socket, Remote)->
   case gen_tcp:recv(Socket, 0) of
     {ok, Msg} ->
       Input = binary_to_term(Msg),
@@ -193,11 +215,11 @@ handle(Socket)->
         Message ->
           send(Message)
       end,
-      handle(Socket);
+      handle(Socket, Remote);
     {error, closed} ->
       io:format("Connection closed~n"),
       gen_tcp:close(Socket),
-      acceptor(Socket)
+      acceptor(Socket, Remote)
 
   end.
 
