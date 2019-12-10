@@ -189,9 +189,8 @@ do(Q) ->
   {atomic, Val} = mnesia:transaction(F),
   Val.
 
-forward(Msg,[Remote|[]])->
-    {ok, Socket} = gen_tcp:connect({127,0,0,1}, Remote, [binary, {active, false}]),
-    gen_tcp:send(Socket, term_to_binary(Msg));
+forward(Msg,[])->
+    ok;
 forward(Msg, [Remote|Ports])->  
   {ok, Socket} = gen_tcp:connect({127,0,0,1}, Remote, [binary, {active, false}]),
   gen_tcp:send(Socket, term_to_binary(Msg)),
