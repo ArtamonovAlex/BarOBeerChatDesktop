@@ -50,7 +50,7 @@ namespace BOBCClient
             if (reply.status == "ok")
             {
                 string RemoteUsers = BobcDesktopUtils.ToJson(reply.user_list);
-                mainWindow.OpenPage(new ChatPage(mainWindow, name, RemoteUsers, debugModeOn, externalPort));
+                mainWindow.OpenPage(new ChatPage(mainWindow, name, RemoteUsers, debugModeOn, externalPort, chatroomId));
             }
         }
     }
