@@ -8,10 +8,10 @@ init(Req0, State) ->
   Req = sign_in(Req0),
   {ok, Req, State}.
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%  Returns reply with body = registered if successfully save user in Mnesia,       %%
-%%  Reason if not; Possible reasons: already_exists, bad_request, ???               %%
-%%%%%%%%%%%5%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%  Returns reply with body = ok if successfully validate user in Mnesia,             %%
+%%  Reason if not; Possible reasons: wrong_password, unknown_login, bad_request, ???  %%
+%%%%%%%%%%%5%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 sign_in(Req0) ->
   HasBody = cowboy_req:has_body(Req0),
 
