@@ -342,3 +342,5 @@ healthchecksdb
 # Mnesia files
 *.DAT
 *.DCD
+
+*.DCL
