@@ -39,14 +39,18 @@ namespace BOBCClient
             bool debugModeOn = (bool)DebugMode.IsChecked;
             string chatroomId = ChatroomBox.Text;
             HttpClient client = mainWindow.httpClient;
-            var responseString = await client.GetStringAsync($"http://localhost:9090/connect/{chatroomId}");
+
+
+            int externalPort = BobcDesktopUtils.GetAvaliablePort(10000, 25000);
+
+            var responseString = await client.GetStringAsync($"http://localhost:9090/connect/{chatroomId}/{externalPort}");
 
 
             dynamic reply = BobcDesktopUtils.FromJson(responseString);
             if (reply.status == "ok")
             {
                 string RemoteUsers = BobcDesktopUtils.ToJson(reply.user_list);
-                mainWindow.OpenPage(new ChatPage(mainWindow, name, RemoteUsers, debugModeOn));
+                mainWindow.OpenPage(new ChatPage(mainWindow, name, RemoteUsers, debugModeOn, externalPort));
             }
         }
     }

@@ -68,7 +68,7 @@ namespace BOBCClient
 
         }
 
-        public ChatPage(MainWindow _mainWindow, string name, string remoteUsers, bool debugModeOn)
+        public ChatPage(MainWindow _mainWindow, string name, string remoteUsers, bool debugModeOn, int externalPort)
         {
             InitializeComponent();
 
@@ -78,7 +78,6 @@ namespace BOBCClient
             string fullPath = System.IO.Path.GetFullPath(relativePath);
 
             int _internalPort = BobcDesktopUtils.GetAvaliablePort(25001, 45000);
-            int externalPort = BobcDesktopUtils.GetAvaliablePort(10000, 25000);
 
             erlNode = new Process();
             erlNode.StartInfo.WorkingDirectory = string.Format(fullPath);
