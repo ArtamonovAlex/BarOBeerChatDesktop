@@ -68,7 +68,7 @@ namespace BOBCClient
 
         }
 
-        public ChatPage(MainWindow _mainWindow, string name, string remoteUsers, bool debugModeOn, int externalPort)
+        public ChatPage(MainWindow _mainWindow, string name, string remoteUsers, bool debugModeOn, int externalPort, string chat)
         {
             InitializeComponent();
 
@@ -86,7 +86,7 @@ namespace BOBCClient
             erlNode.StartInfo.RedirectStandardInput = true;
             erlNode.StartInfo.UseShellExecute = false;
             erlNode.Start();
-            erlNode.StandardInput.WriteLine($"start.bat {name} {_internalPort} {externalPort} \"{remoteUsers}\"");
+            erlNode.StandardInput.WriteLine($"start.bat {name} {_internalPort} {externalPort} \"{remoteUsers}\" \"{chat}\"");
 
 
             mainWindow = _mainWindow;
@@ -116,7 +116,10 @@ namespace BOBCClient
         {
             App.Current.Dispatcher.Invoke((Action)delegate
             {
-                messages.Add(e.Data);
+                string MessageString = e.Data;
+                dynamic MesgObj = BobcDesktopUtils.FromJson(MessageString);
+                string msgString = $"{MesgObj.from}: {MesgObj.msg}          {MesgObj.time}";
+                messages.Add(msgString);
             });
         }
 

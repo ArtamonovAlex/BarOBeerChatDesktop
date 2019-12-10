@@ -17,8 +17,10 @@ start(_StartType, _StartArgs) ->
     {ok, Remote} = application:get_env(bobc, remote),
     % Users_list = jsone:decode(list_to_binary(Remote)),
     {ok, External} = application:get_env(bobc, external),
-    init_database(?ChatId),
-    {ok, Pid_server} = local_back:start_link(External, Remote, ?ChatId),
+    {ok, Chat} = application:get_env(bobc, chat),
+    io:format("~p~n", [Chat]),
+    init_database(atom_to_list(Chat)),
+    {ok, Pid_server} = local_back:start_link(External, Remote, atom_to_list(Chat)),
     State = #state{pid_server = Pid_server},
     Dispatch = cowboy_router:compile([
             {'_', [
