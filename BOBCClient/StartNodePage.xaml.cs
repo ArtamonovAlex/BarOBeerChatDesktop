@@ -19,11 +19,11 @@ namespace BOBCClient
     /// <summary>
     /// Логика взаимодействия для LoginPage.xaml
     /// </summary>
-    public partial class LoginPage : Page
+    public partial class StartNodePage : Page
     {
 
         public MainWindow mainWindow;
-        public LoginPage(MainWindow _mainWindow)
+        public StartNodePage(MainWindow _mainWindow)
         {
             InitializeComponent();
 

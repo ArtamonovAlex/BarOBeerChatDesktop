@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Linq;
-using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
@@ -14,26 +12,30 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
-using WebSocketSharp;
 
 namespace BOBCClient
 {
     /// <summary>
-    /// Логика взаимодействия для MainWindow.xaml
+    /// Логика взаимодействия для WelcomePage.xaml
     /// </summary>
-    public partial class MainWindow : Window
+    public partial class WelcomePage : Page
     {
-
-        public readonly HttpClient httpClient;
-        public MainWindow()
+        private MainWindow mainWindow;
+        public WelcomePage(MainWindow _mainWindow)
         {
             InitializeComponent();
-            httpClient = new HttpClient();
-            OpenPage(new WelcomePage(this));
+
+            mainWindow = _mainWindow;
         }
 
-        public void OpenPage(Page page) {
-            Frame.Navigate(page);
+        private void SignInButton_Click(object sender, RoutedEventArgs e)
+        {
+            mainWindow.OpenPage(new SignInPage(mainWindow));
+        }
+
+        private void SignUpButton_Click(object sender, RoutedEventArgs e)
+        {
+
         }
     }
 }
