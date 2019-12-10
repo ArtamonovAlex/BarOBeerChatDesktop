@@ -81,14 +81,7 @@ init([External, Remote, ChatId]) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(handle_call(Request :: term(), From :: {pid(), Tag :: term()},
-    State :: #state{}) ->
-  {reply, Reply :: term(), NewState :: #state{}} |
-  {reply, Reply :: term(), NewState :: #state{}, timeout() | hibernate} |
-  {noreply, NewState :: #state{}} |
-  {noreply, NewState :: #state{}, timeout() | hibernate} |
-  {stop, Reason :: term(), Reply :: term(), NewState :: #state{}} |
-  {stop, Reason :: term(), NewState :: #state{}}).
+
 
 handle_call({websocket_init,  WebSocket}, _From, #state{external = External, remote = Remote, chat_id =ChatId}) ->
   NewState =  #state{websocket = WebSocket, external = External, remote = Remote, chat_id = ChatId},
@@ -99,22 +92,12 @@ handle_call(_Request, _From, State) ->
   {reply, ok, State}.
 
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling cast messages
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec(handle_cast(Request :: term(), State :: #state{}) ->
-  {noreply, NewState :: #state{}} |
-  {noreply, NewState :: #state{}, timeout() | hibernate} |
-  {stop, Reason :: term(), NewState :: #state{}}).
+
 
 
 handle_cast({send, #message{ msg = Message, from = From} = Msg}, #state{websocket = WebSocket, chat_id = Chat_id} = State)->
   save_message(Chat_id,{From,Message}),
-  WebSocket ! {send,{Msg#message.msg_id, Msg#message.msg, Msg#message.from, Msg#message.time }},
+  WebSocket ! {send,#{msg_id => Msg#message.msg_id, msg => Msg#message.msg, from => Msg#message.from, time => Msg#message.time }},
   {noreply, State};
 
 
@@ -126,12 +109,12 @@ handle_cast({forward, Msg},#state{chat_id = Chat_id, remote = Remote} = State) -
   {noreply, State};
 
 handle_cast({enter, Client_port}, State)->
-  gen_server:cast(forward, list_to_binary("User connected " ++ integer_to_list(Client_port))),
+  State#state.websocket !{ send, #{msg_id => -1, msg =>list_to_binary("User connected " ++ integer_to_list(Client_port)), from => system, time => calendar:local_time()}},
   NewState = #state{websocket =State#state.websocket, external = State#state.external, remote =[Client_port| State#state.remote], chat_id = State#state.chat_id},
   {noreply, NewState};
 
 handle_cast({leave, Client_port}, State)->
-  gen_server:cast(forward, list_to_binary("User Leave " ++  integer_to_list(Client_port))),
+  State#state.websocket !{ send,list_to_binary("User leave " ++ integer_to_list(Client_port))},
   Remote = lists:delete(Client_port),
   NewState = #state{websocket =State#state.websocket, external = State#state.external, remote =Remote, chat_id = State#state.chat_id},
   {noreply, NewState}.
@@ -141,20 +124,7 @@ handle_cast({leave, Client_port}, State)->
 
 
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling all non call/cast messages
-%%
-%% @spec handle_info(Info, State) -> {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, State}
-%% @end
-%%--------------------------------------------------------------------
-%%-spec(handle_info(Info :: timeout() | term(), State :: #state{}) ->
-%%  {noreply, NewState :: #state{}} |
-%%  {noreply, NewState :: #state{}, timeout() | hibernate} |
-%%  {stop, Reason :: term(), NewState :: #state{}}).
+
 handle_info(_Info, State) ->
   {noreply, State}.
 
@@ -175,17 +145,7 @@ terminate(_Reason, State) ->
   forward({leave, State#state.external}, State#state.remote),
   ok.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Convert process state when code is changed
-%%
-%% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
-%% @end
-%%--------------------------------------------------------------------
--spec(code_change(OldVsn :: term() | {down, term()}, State :: #state{},
-    Extra :: term()) ->
-  {ok, NewState :: #state{}} | {error, Reason :: term()}).
+
 code_change(_OldVsn, State, _Extra) ->
   {ok, State}.
 
@@ -193,15 +153,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
-print_history(ChatId)->
-  mnesia:start(),
-  mnesia:wait_for_tables([list_to_atom(ChatId)], 20000),
-  do(qlc:q([{ X#message.msg_id,X#message.msg, X#message.from, X#message.time } || X <- mnesia:table(list_to_atom(ChatId))])).
 
-do(Q) ->
-  F = fun() -> qlc:e(Q) end,
-  {atomic, Val} = mnesia:transaction(F),
-  Val.
+
+%%%===================================================================
+%%% tcp block
+%%%===================================================================
 
 forward(_Msg,[])->
     ok;
@@ -244,14 +200,21 @@ handle(Socket)->
       acceptor(Socket)
 
   end.
-  % inet:setopts(Socket,[{active, once}]),
-  % receive
-  %   {tcp, Socket,<<"quit, _/binary">>} ->
-  %     gen_tcp:close(Socket);
-  %   {tcp, Socket, Msg}->
-  %     send(Msg),
-  %     handle(Socket)
-  % end.
+
+
+
+%%%===================================================================
+%%%Database block
+%%%===================================================================
+print_history(ChatId)->
+  mnesia:start(),
+  mnesia:wait_for_tables([list_to_atom(ChatId)], 20000),
+  do(qlc:q([#{ msg_id =>X#message.msg_id,msg =>X#message.msg, from =>X#message.from, time =>X#message.time } || X <- mnesia:table(list_to_atom(ChatId))])).
+
+do(Q) ->
+  F = fun() -> qlc:e(Q) end,
+  {atomic, Val} = mnesia:transaction(F),
+  Val.
 
   save_message(ChatId, {From, Message}) ->
     Row = #message{from = From, msg = Message,
