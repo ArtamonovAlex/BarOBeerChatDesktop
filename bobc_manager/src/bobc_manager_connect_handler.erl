@@ -11,7 +11,7 @@ init(Req0, State) ->
         ChatId ->
             case get_online_users(ChatId) of
                 undefined ->
-                    {200, chat_not_found};
+                    {200, #{status => chat_not_found}};
                 UserList ->
                     {200, #{status => ok, user_list => UserList}}
             end
